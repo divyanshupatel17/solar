@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, ComposedChart, Bar } from 'recharts';
 import { Zap, Battery, Coins, Target, AlertTriangle, Sun, Cloud, Thermometer, ChevronLeft, ChevronRight, Calendar, TrendingUp } from 'lucide-react';
+import { fetch7DayForecast, formatWeatherData } from '../utils/weather';
+import { FormattedWeatherData } from '../types/weather';
 
 interface DashboardPageProps {
   user: any;
@@ -14,7 +16,8 @@ interface DashboardPageProps {
 
 const EnhancedDashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
   const [forecastPeriod, setForecastPeriod] = useState<'7-day' | 'monthly'>('7-day');
-  const [weatherIndex, setWeatherIndex] = useState(0);
+  const [weatherForecast, setWeatherForecast] = useState<FormattedWeatherData[]>([]);
+  const [loadingWeather, setLoadingWeather] = useState(true);
 
   const summaryStats = [
     { title: "Today's Energy", value: "6.2 kWh", icon: Zap, color: "text-[#FFD43B]", change: "+12%" },
@@ -58,16 +61,6 @@ const EnhancedDashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
     ]
   };
 
-  const weatherForecast = [
-    { day: 'Mon', condition: 'Sunny', temp: 32, cloud: 20, icon: '☀️' },
-    { day: 'Tue', condition: 'Partly Cloudy', temp: 30, cloud: 45, icon: '⛅' },
-    { day: 'Wed', condition: 'Cloudy', temp: 28, cloud: 65, icon: '☁️' },
-    { day: 'Thu', condition: 'Sunny', temp: 33, cloud: 10, icon: '☀️' },
-    { day: 'Fri', condition: 'Rainy', temp: 26, cloud: 80, icon: '🌧️' },
-    { day: 'Sat', condition: 'Sunny', temp: 34, cloud: 15, icon: '☀️' },
-    { day: 'Sun', condition: 'Rainy', temp: 30, cloud: 70, icon: '🌧️' }
-  ];
-
   const energyLogs = [
     { date: "20 Sep 25", kwh: 6.2, tokens: "12 SLR", anomalies: 1, weather: "Cloudy 40%", status: "normal" },
     { date: "19 Sep 25", kwh: 7.5, tokens: "15 SLR", anomalies: 0, weather: "Sunny 20%", status: "good" },
@@ -81,6 +74,34 @@ const EnhancedDashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
     { time: "18 Sep, 1PM", message: "Sudden 70% drop detected", severity: "error" },
     { time: "17 Sep, 11AM", message: "Minor fluctuation in output", severity: "info" },
   ];
+
+  // Fetch weather data on component mount
+  useEffect(() => {
+    const loadWeatherData = async () => {
+      try {
+        setLoadingWeather(true);
+        const weatherData = await fetch7DayForecast();
+        const formattedData = formatWeatherData(weatherData);
+        setWeatherForecast(formattedData);
+      } catch (error) {
+        console.error('Failed to load weather data:', error);
+        // Use mock data in case of error
+        setWeatherForecast([
+          { date: 'Mon', condition: 'Sunny', description: 'clear sky', temp: 32, minTemp: 26, maxTemp: 34, humidity: 45, windSpeed: 3.5, icon: '☀️', precipitation: 0, uvIndex: 8 },
+          { date: 'Tue', condition: 'Partly Cloudy', description: 'few clouds', temp: 30, minTemp: 25, maxTemp: 33, humidity: 50, windSpeed: 4.2, icon: '⛅', precipitation: 0, uvIndex: 7 },
+          { date: 'Wed', condition: 'Cloudy', description: 'scattered clouds', temp: 28, minTemp: 24, maxTemp: 31, humidity: 55, windSpeed: 3.8, icon: '☁️', precipitation: 10, uvIndex: 5 },
+          { date: 'Thu', condition: 'Sunny', description: 'clear sky', temp: 33, minTemp: 27, maxTemp: 36, humidity: 40, windSpeed: 3.2, icon: '☀️', precipitation: 0, uvIndex: 9 },
+          { date: 'Fri', condition: 'Rainy', description: 'light rain', temp: 26, minTemp: 22, maxTemp: 29, humidity: 65, windSpeed: 5.1, icon: '🌧️', precipitation: 70, uvIndex: 3 },
+          { date: 'Sat', condition: 'Sunny', description: 'clear sky', temp: 34, minTemp: 28, maxTemp: 37, humidity: 35, windSpeed: 2.9, icon: '☀️', precipitation: 0, uvIndex: 9 },
+          { date: 'Sun', condition: 'Rainy', description: 'moderate rain', temp: 30, minTemp: 25, maxTemp: 33, humidity: 48, windSpeed: 4.5, icon: '🌧️', precipitation: 60, uvIndex: 4 }
+        ]);
+      } finally {
+        setLoadingWeather(false);
+      }
+    };
+
+    loadWeatherData();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -204,7 +225,7 @@ const EnhancedDashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
                 <TrendingUp className="w-5 h-5 text-[#4285F4]" />
                 Expected Production Forecast
               </CardTitle>
-              <Tabs value={forecastPeriod} onValueChange={(value) => setForecastPeriod(value as '7-day' | 'monthly')}>
+              <Tabs value={forecastPeriod} onValueChange={(value: string) => setForecastPeriod(value as '7-day' | 'monthly')}>
                 <TabsList className="bg-gray-100 rounded-xl">
                   <TabsTrigger value="7-day" className="rounded-lg">7-Day</TabsTrigger>
                   <TabsTrigger value="monthly" className="rounded-lg">Monthly</TabsTrigger>
@@ -304,63 +325,77 @@ const EnhancedDashboardPage: React.FC<DashboardPageProps> = ({ user }) => {
           {/* Extended 7-Day Weather Forecast */}
           <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-gray-900">
-                  <Sun className="w-5 h-5 text-[#FFD43B]" />
-                  7-Day Weather Forecast
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setWeatherIndex(Math.max(0, weatherIndex - 1))}
-                    disabled={weatherIndex === 0}
-                    className="p-1 h-6 w-6"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setWeatherIndex(Math.min(weatherForecast.length - 3, weatherIndex + 1))}
-                    disabled={weatherIndex >= weatherForecast.length - 3}
-                    className="p-1 h-6 w-6"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+              <CardTitle className="flex items-center gap-2 text-gray-900">
+                <Sun className="w-5 h-5 text-[#FFD43B]" />
+                7-Day Weather Forecast
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Current Weather */}
-              <div className="p-4 bg-[#FFD43B]/10 rounded-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-700">Today</span>
-                  <span className="text-2xl">☀️</span>
+              {loadingWeather ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD43B]"></div>
                 </div>
-                <p className="text-2xl text-gray-900">30°C</p>
-                <p className="text-sm text-gray-600">Cloud Cover: 40%</p>
-                <p className="text-sm text-gray-600">Irradiance: 800 W/m²</p>
-              </div>
-
-              {/* Weather Carousel */}
-              <div className="space-y-3">
-                {weatherForecast.slice(weatherIndex, weatherIndex + 3).map((weather, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{weather.icon}</span>
-                      <div>
-                        <p className="text-sm text-gray-900">{weather.day}</p>
-                        <p className="text-xs text-gray-600">{weather.condition}</p>
+              ) : (
+                <>
+                  {/* Current Weather */}
+                  <div className="p-4 bg-[#FFD43B]/10 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-700">Today</span>
+                      <span className="text-2xl">{weatherForecast[0]?.icon || '☀️'}</span>
+                    </div>
+                    <p className="text-2xl text-gray-900">{weatherForecast[0]?.temp || 30}°C</p>
+                    <p className="text-sm text-gray-600">Condition: {weatherForecast[0]?.condition || 'Sunny'}</p>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="text-xs">
+                        <span className="text-gray-500">Min:</span> {weatherForecast[0]?.minTemp || 25}°C
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-gray-500">Max:</span> {weatherForecast[0]?.maxTemp || 35}°C
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-gray-500">UV:</span> {weatherForecast[0]?.uvIndex || 7}
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-gray-500">Wind:</span> {weatherForecast[0]?.windSpeed || 10} km/h
+                      </div>
+                      <div className="text-xs col-span-2">
+                        <span className="text-gray-500">Precipitation:</span> {weatherForecast[0]?.precipitation || 0} mm
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-900">{weather.temp}°C</p>
-                      <p className="text-xs text-gray-600">{weather.cloud}% cloud</p>
-                    </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Weather Forecast for all 7 days */}
+                  <div className="space-y-3">
+                    {weatherForecast.slice(1).map((weather, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{weather.icon}</span>
+                          <div>
+                            <p className="text-sm text-gray-900">{weather.date}</p>
+                            <p className="text-xs text-gray-600">{weather.condition}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-900">
+                            {weather.minTemp}°/{weather.maxTemp}°
+                          </p>
+                          <div className="flex justify-end gap-2">
+                            <span className="text-xs text-gray-600">
+                              {weather.precipitation > 0 ? `${weather.precipitation}mm` : '0mm'}
+                            </span>
+                            <span className="text-xs text-gray-600">
+                              {weather.windSpeed}km/h
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            UV: {weather.uvIndex}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

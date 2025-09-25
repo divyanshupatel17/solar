@@ -49,6 +49,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Sign in with Google
   const signInWithGoogle = async (): Promise<User> => {
+    // Commenting out the actual Google login implementation
+    /*
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
@@ -73,19 +75,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Error signing in with Google:', error);
       throw error;
     }
+    */
+    
+    // Mock implementation for demo purposes
+    try {
+      // Create a mock user object
+      const mockUser = {
+        uid: 'mock-user-123',
+        displayName: 'Demo User',
+        email: 'demo@example.com',
+        photoURL: null,
+        providerData: []
+      } as unknown as User;
+      
+      // Set the mock user
+      setCurrentUser(mockUser);
+      
+      // Set a default balance for demo
+      setBalance(1000);
+      
+      return mockUser;
+    } catch (error) {
+      console.error('Error in mock sign in:', error);
+      throw error;
+    }
   };
 
   // Sign out
   const signOut = async (): Promise<void> => {
+    // Commenting out the actual Firebase sign out
+    /*
     try {
       await firebaseSignOut(auth);
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
     }
+    */
+    
+    // Mock sign out implementation
+    setCurrentUser(null);
+    setBalance(0);
   };
 
   // Listen to auth state changes
+  // Commenting out the actual Firebase listener for demo purposes
+  /*
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -94,8 +129,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return unsubscribe;
   }, []);
+  */
+  
+  // Mock implementation - simulate loading and then finish loading
+  useEffect(() => {
+    // Simulate loading delay
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // Listen to user balance changes from Firestore
+  // Commenting out the actual Firestore listener for demo purposes
+  /*
   useEffect(() => {
     let unsubscribeBalance: (() => void) | null = null;
 
@@ -120,6 +168,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
   }, [currentUser]);
+  */
+  
+  // Mock implementation for balance
+  // This effect is kept but simplified for the demo
+  useEffect(() => {
+    // In a real implementation, this would come from Firestore
+    // For demo, we'll just ensure the balance is set correctly
+    if (currentUser && balance === 0) {
+      setBalance(1000); // Set a default balance for demo
+    }
+  }, [currentUser, balance]);
 
   const value: AuthContextType = {
     currentUser,

@@ -47,7 +47,7 @@ const SignInWithGoogle: React.FC = () => {
           fill="#EA4335"
         />
       </svg>
-      <span>{isLoading ? 'Signing in...' : 'Sign in with Google'}</span>
+      <span>{isLoading ? 'Signing in...' : 'Sign in with Google (Demo)'}</span>
     </Button>
   );
 };
